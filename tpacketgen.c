@@ -253,8 +253,7 @@ int sendudppacket(sendinfo_t *sendinfo,program_config_t *program_config){
 }
 
 void *thread_sendpacket(void *param){
-	int res;
-	res = sendudppacket(param->sendinfo,param->program_config);
+	sendudppacket((pthread_arg_t *)param->sendinfo,(pthread_arg_t *)param->program_config);
 	return NULL;
 }
 
