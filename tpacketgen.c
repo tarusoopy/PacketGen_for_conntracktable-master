@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <getopt.h>
 #include <errno.h>
+#include <pthread.h>
 
 typedef struct {
 	struct in_addr saddr_start;
@@ -27,6 +28,10 @@ typedef struct {
 	u_short dport;
 }sendinfo_t;
 
+typedef struct {
+  program_config_t *program_config;
+  sendinfo_t *sendinfo;
+} pthread_arg_t;
 
 int analyze_opt(int argc, char** argv,program_config_t *program_config ){
 	int c;
@@ -247,15 +252,23 @@ int sendudppacket(sendinfo_t *sendinfo,program_config_t *program_config){
 
 }
 
+void *thread_sendpacket(void *param){
+	int res;
+	res = sendudppacket(param->sendinfo,param->program_config);
+	return NULL;
+}
+
 int main(int argc, char** argv){
 
 	int res;
 	int tmp_sip,tmp_dip,tmp_sport,tmp_dport;
 	int sendcount = 0;
-
+	pthread_t pthread;
+	
 	program_config_t program_config ={0,0,10000,1,0,0,10000,1,0};
 	sendinfo_t saddrinfo;
-
+	pthread_arg_t pthread_arg;
+	
 	res = analyze_opt(argc,argv,&program_config);
 	if(res > 0 ){
 		char *USAGE="udppacketgen [-i] --saddr_start <IP> [--saddr_end <IP>] [--sport_start <port>] [--sport_num <num>] --daddr_start <IP> [--daddr_end <IP>] [--dport_start <port>] [--dport_num <num>]\n"
@@ -286,8 +299,11 @@ int main(int argc, char** argv){
 					saddrinfo.sport = tmp_sport;
 					saddrinfo.daddr.s_addr = htonl(tmp_dip);
 					saddrinfo.dport = tmp_dport;
-					res = sendudppacket(&saddrinfo,&program_config);
-					if( res == 1){
+					pthread_arg.program_config = &program_config;
+					pthread_arg.sendinfo = &saddrinfo;
+					res = pthread_create(&pthread,NULL,&thread_sendpacket,&pthread_arg);
+					//res = sendudppacket(&saddrinfo,&program_config);
+					if( res == 0){
 						sendcount++;
 					}
 				}
